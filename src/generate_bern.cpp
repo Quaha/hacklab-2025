@@ -28,7 +28,7 @@ Status generate_bernoulli(size_t n, uint32_t seed, float probability, float* res
         std::bernoulli_distribution d{ probability };
 
         for (int i = START; i < END; ++i) {
-            result[i] = d(gen);
+            result[i] = bern_f_dist(gen, probability);
         }
     }
 

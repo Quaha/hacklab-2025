@@ -26,10 +26,8 @@ Status generate_exponential(size_t n, uint32_t seed, float lambda, float* result
 
         Generator gen(seed, START);
 
-        std::exponential_distribution<float> d{ lambda };
-
         for (int i = START; i < END; ++i) {
-            result[i] = d(gen);
+            result[i] = exp_f_dist(gen, lambda);
         }
     }
  

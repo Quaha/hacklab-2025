@@ -25,11 +25,9 @@ Status generate_uniform(size_t n, uint32_t seed, float min, float max, float* re
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
         Generator gen(seed, START);
-         
-        std::uniform_real_distribution<float> d{ min, max };
 
         for (int i = START; i < END; ++i) {
-            result[i] = d(gen);
+            result[i] = uni_f_distab(gen, min, max);
         }
     }
 
