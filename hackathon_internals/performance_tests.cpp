@@ -135,8 +135,8 @@ int run_performance() {
     results[2] = benchmark_norm();
     results[3] = benchmark_exponential();
     results[4] = benchmark_bernoulli();
-    //results[5] = benchmark_aes256_gcm();
-    //results[6] = benchmark_crc32();
+    results[5] = benchmark_aes256_gcm();
+    results[6] = benchmark_crc32();
     
     print_performance_table(results, 7);
     
