@@ -65,7 +65,8 @@ static void add_round_key(uint8_t* s, const uint8_t* k) {
 
 static uint8_t rcon(uint8_t i) {
     uint8_t c = 1;
-    while (i-- > 1) c = gmul(c, 2);
+    for (int j = 1; j < i; j++)
+        c = gmul[c][2];
     return c;
 }
 
@@ -126,6 +127,10 @@ static void gmul_block(const uint8_t* a, const uint8_t* b, uint8_t* result) {
 
     memcpy(v, b, 16);
 
+    for (int k = 0; k < 8; k++) {
+        std::swap(v[k], v[15 - k]);
+    }
+    
     for (int i = 0; i < 16; i++) {
         for (int j = 7; j >= 0; j--) {
             if (a[i] & (1 << j)) {
@@ -133,55 +138,47 @@ static void gmul_block(const uint8_t* a, const uint8_t* b, uint8_t* result) {
                     z[k] ^= v[k];
                 }
             }
+            
+            uint8_t carry = v[0] & 0x01;
 
-            uint8_t carry = v[15] & 0x01;
-            for (int k = 15; k > 0; k--) {
-                v[k] = (v[k] >> 1) | (v[k - 1] << 7);
+            for (int k = 0; k < 15; k++) {
+                v[k] = (v[k] >> 1) | (v[k + 1] << 7);
             }
-            v[0] = v[0] >> 1;
-
-            if (carry) {
-                v[0] ^= 0xE1;
-            }
+            v[15] >>= 1;
+            v[15] ^= (-carry) & 0xE1;
         }
+    }
+
+    for (int k = 0; k < 8; k++) {
+        std::swap(z[k], z[15 - k]);
     }
 
     memcpy(result, z, 16);
 }
 
-static void ghash(const uint8_t* h, const uint8_t* aad, size_t aad_len,
-    const uint8_t* ciphertext, size_t ciphertext_len, uint8_t* tag) {
-    uint8_t x[16] = { 0 };
+static void ghash(const uint8_t *h,
+                  const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *tag) {
+    uint8_t x[16] = {0};
     uint8_t block[16];
-
-    for (size_t i = 0; i < aad_len; i += 16) {
-        size_t block_len = (i + 16 <= aad_len) ? 16 : aad_len - i;
-        memset(block, 0, 16);
-        memcpy(block, aad + i, block_len);
-
-        for (int j = 0; j < 16; j++) {
-            x[j] ^= block[j];
-        }
-        gmul_block(x, h, x);
-    }
-
+    
     for (size_t i = 0; i < ciphertext_len; i += 16) {
+        uint8_t block2[16];
         size_t block_len = (i + 16 <= ciphertext_len) ? 16 : ciphertext_len - i;
-        memset(block, 0, 16);
-        memcpy(block, ciphertext + i, block_len);
-
+        memset(block2, 0, 16);
+        memcpy(block2, ciphertext + i, block_len);
+        
+#pragma omp simd
         for (int j = 0; j < 16; j++) {
-            x[j] ^= block[j];
+            x[j] ^= block2[j];
         }
         gmul_block(x, h, x);
     }
-
-    uint64_t aad_len_bits = ((uint64_t)aad_len) * 8;
+    
     uint64_t ciphertext_len_bits = ((uint64_t)ciphertext_len) * 8;
 
     memset(block, 0, 16);
     for (int i = 0; i < 8; i++) {
-        block[7 - i] = (aad_len_bits >> (i * 8)) & 0xff;
+        block[7 - i] = 0;
         block[15 - i] = (ciphertext_len_bits >> (i * 8)) & 0xff;
     }
 
@@ -247,9 +244,9 @@ Status aes256_gcm(const uint8_t* plaintext, uint8_t* ciphertext,
             ciphertext[i + j] = plaintext[i + j] ^ keystream[j];
         }
     }
-
-    ghash(h, nullptr, 0, ciphertext, plaintext_len, tag);
-
+    
+    ghash(h, ciphertext, plaintext_len, tag);
+    
     uint8_t e_j0[16];
     aes256_encrypt(j0, e_j0, key);
 
