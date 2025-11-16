@@ -27,31 +27,21 @@ const int N = static_cast<int>(n);
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
         Generator gen(seed, START);
 
-
-        for (int i = START; i < END; ++i) {
-            float s = 0;
-            for (int j = 0; j < 10; j++) {
-                s += uni_f_distab(gen, -1.0f, 1.0f);
+        for (int i = START; i < END; i += 2) {
+            float x = uni_f_distab(gen, -1.0f, 1.0f);
+            float y = uni_f_distab(gen, -1.0f, 1.0f);
+            float s = x * x + y * y;
+            while (s == 0.0f || s > 1.0f) {
+                x = uni_f_distab(gen, -1.0f, 1.0f);
+                y = uni_f_distab(gen, -1.0f, 1.0f);
+                s = x * x + y * y;
             }
-             
-            result[i] = s * stddev + mean;
+            float z = sqrt(-2.0f * log(s) / s);
+            float z0 = x * z;
+            float z1 = y * z;
+            result[i] = z0 * stddev + mean;
+            result[i + 1] = z1 * stddev + mean;
         }
-
-        //for (int i = START; i < END; i += 2) {
-        //    float x = uni_f_distab(gen, -1.0f, 1.0f);
-        //    float y = uni_f_distab(gen, -1.0f, 1.0f);
-        //    float s = x * x + y * y;
-        //    while (s == 0.0f || s > 1.0f) {
-        //        x = uni_f_distab(gen, -1.0f, 1.0f);
-        //        y = uni_f_distab(gen, -1.0f, 1.0f);
-        //        s = x * x + y * y;
-        //    }
-        //    float z = sqrt(-2.0f * log(s) / s);
-        //    float z0 = x * z;
-        //    float z1 = y * z;
-        //    result[i] = z0 * stddev + mean;
-        //    result[i + 1] = z1 * stddev + mean;
-        //}
     }
 
     return STATUS_OK;
