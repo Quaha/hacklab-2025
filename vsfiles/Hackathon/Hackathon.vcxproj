@@ -104,10 +104,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <UseProcessorExtensions>HOST</UseProcessorExtensions>
+      <UseProcessorExtensions>None</UseProcessorExtensions>
       <OpenMP>GenerateParallelCode</OpenMP>
       <AdditionalIncludeDirectories>..\..\hackathon_internals;..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <Optimization>MaxSpeedHighLevel</Optimization>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,10 +123,10 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <GenerateDebugInformation>Full</GenerateDebugInformation>
-      <UseProcessorExtensions>HOST</UseProcessorExtensions>
+      <UseProcessorExtensions>None</UseProcessorExtensions>
       <OpenMP>GenerateParallelCode</OpenMP>
       <AdditionalIncludeDirectories>..\..\hackathon_internals;..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <Optimization>MaxSpeedHighLevel</Optimization>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

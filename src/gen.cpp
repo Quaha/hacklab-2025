@@ -3,6 +3,9 @@
 uint64_t Generator::a = 16807ull;
 uint64_t Generator::mod = 2147483647ull;
 
+uint64_t VGenerator::a = 16807ull;
+uint64_t VGenerator::mod = 2147483647ull;
+
 void initDegs(uint64_t degs[32], uint64_t a, uint64_t mod) {
 
 	uint64_t value = 1ull;
@@ -60,7 +63,7 @@ void Generator::move(int shift) {
 }
 
 VGenerator::VGenerator(uint64_t seed, int shift) {
-	uint32_t cstate = seed % mod;
+	uint64_t cstate = seed % mod;
 
 	uint64_t value = a;
 	for (int i = 0; i < 32; i++) {
@@ -71,6 +74,8 @@ VGenerator::VGenerator(uint64_t seed, int shift) {
 		value *= value;
 		value %= mod;
 	}
+	cstate = cstate * a % mod;
+
 
 	uint64_t v = 1ull;
 
@@ -90,12 +95,14 @@ VGenerator::VGenerator(uint64_t seed, int shift) {
 }
 
 void VGenerator::copy(int ci, int otheri, uint32_t* data) {
+#pragma omp simd
 	for (int i = 0; i < ci; i++) {
-		data[otheri + i] = state[ci];
+		data[otheri + i] = state[i];
 	}
 }
 
 void VGenerator::change() {
+#pragma omp simd
 	for (int i = 0; i < VGENSZ; ++i) {
 		state[i] *= shift_par;
 		state[i] %= mod;
