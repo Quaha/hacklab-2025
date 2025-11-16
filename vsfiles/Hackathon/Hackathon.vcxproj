@@ -107,6 +107,7 @@
       <UseProcessorExtensions>HOST</UseProcessorExtensions>
       <OpenMP>GenerateParallelCode</OpenMP>
       <AdditionalIncludeDirectories>..\..\hackathon_internals;..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeedHighLevel</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,6 +126,7 @@
       <UseProcessorExtensions>HOST</UseProcessorExtensions>
       <OpenMP>GenerateParallelCode</OpenMP>
       <AdditionalIncludeDirectories>..\..\hackathon_internals;..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeedHighLevel</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,12 +142,23 @@
     <ClCompile Include="..\..\interface.cpp" />
     <ClCompile Include="..\..\src\aes.cpp" />
     <ClCompile Include="..\..\src\crc.cpp" />
-    <ClCompile Include="..\..\src\generators.cpp" />
+    <ClCompile Include="..\..\src\generate_bern.cpp" />
+    <ClCompile Include="..\..\src\generate_bits.cpp" />
+    <ClCompile Include="..\..\src\generate_exp.cpp" />
+    <ClCompile Include="..\..\src\generate_norm.cpp" />
+    <ClCompile Include="..\..\src\generate_uniform.cpp" />
+    <ClCompile Include="..\..\src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\hackathon_internals\run.hpp" />
     <ClInclude Include="..\..\hackathon_internals\tests.hpp" />
+    <ClInclude Include="..\..\src\generate_bern.hpp" />
+    <ClInclude Include="..\..\src\generate_bits.hpp" />
+    <ClInclude Include="..\..\src\generate_exp.hpp" />
+    <ClInclude Include="..\..\src\generate_norm.hpp" />
+    <ClInclude Include="..\..\src\generate_uniform.hpp" />
     <ClInclude Include="..\..\src\solution.hpp" />
+    <ClInclude Include="..\..\src\utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
