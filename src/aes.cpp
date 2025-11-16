@@ -7,6 +7,8 @@
 #include "solution.hpp"
 
 static uint8_t gmul[256][256];
+static uint8_t gmul_inv[256];
+static uint8_t sbox[256];
 
 static uint8_t gmul_impl(uint8_t a, uint8_t b) {
     uint8_t p = 0;
@@ -20,13 +22,6 @@ static uint8_t gmul_impl(uint8_t a, uint8_t b) {
     return p;
 }
 
-static void gmul_precomp() {
-#pragma omp parallel for
-    for (int i = 0; i < 256 * 256; i++) {
-        gmul[i / 256][i % 256] = gmul_impl(i / 256, i % 256);
-    }
-}
-
 static uint8_t gf_inv(uint8_t x) {
     if (x == 0) return 0;
     uint8_t y = x;
@@ -38,11 +33,26 @@ static uint8_t gf_inv(uint8_t x) {
 }
 
 static uint8_t sbox_calc(uint8_t x) {
-    x = gf_inv(x);
+    x = gmul_inv[x];
     uint8_t s = x;
     for (int i = 0; i < 4; i++)
         s ^= (x = (x << 1) | (x >> 7));
     return s ^ 0x63;
+}
+
+static void gmul_precomp() {
+#pragma omp parallel for
+    for (int i = 0; i < 256 * 256; i++) {
+        gmul[i / 256][i % 256] = gmul_impl(i / 256, i % 256);
+    }
+
+    for (int i = 0; i < 256; i++) {
+        gmul_inv[i] = gf_inv(i);
+    }
+
+    for (int i = 0; i < 256; i++) {
+        sbox[i] = sbox_calc(i);
+    }
 }
 
 static uint8_t rcon(uint8_t i) {
@@ -60,15 +70,15 @@ static void key_expansion(const uint8_t *key, uint8_t *w) {
         
         if (i % 8 == 0) {
             uint8_t t = temp[0];
-            temp[0] = sbox_calc(temp[1]) ^ rcon(i / 8);
-            temp[1] = sbox_calc(temp[2]);
-            temp[2] = sbox_calc(temp[3]);
-            temp[3] = sbox_calc(t);
+            temp[0] = sbox[temp[1]] ^ rcon(i / 8);
+            temp[1] = sbox[temp[2]];
+            temp[2] = sbox[temp[3]];
+            temp[3] = sbox[t];
         } else if (i % 8 == 4) {
-            temp[0] = sbox_calc(temp[0]);
-            temp[1] = sbox_calc(temp[1]);
-            temp[2] = sbox_calc(temp[2]);
-            temp[3] = sbox_calc(temp[3]);
+            temp[0] = sbox[temp[0]];
+            temp[1] = sbox[temp[1]];
+            temp[2] = sbox[temp[2]];
+            temp[3] = sbox[temp[3]];
         }
         
         uint8_t *base = w + (i - 8) * 4;
@@ -107,15 +117,19 @@ static void gmul_block(const uint8_t *a, const uint8_t *b, uint8_t *result) {
                     z[k] ^= v[k];
                 }
             }
-            
-            uint8_t carry = v[15] & 0x01;
-            for (int k = 15; k > 0; k--) {
-                v[k] = (v[k] >> 1) | (v[k-1] << 7);
+
+            uint8_t carry = 0;
+            uint8_t next_carry;
+
+            for (int k = 0; k < 16; k++) {
+                next_carry = v[k] << 7;
+                v[k] = (v[k] >> 1) | carry;
+                carry = next_carry;
             }
-            v[0] = v[0] >> 1;
             
+            // Применяем редукцию по модулю, если был перенос
             if (carry) {
-                v[0] ^= 0xE1;
+                v[0] ^= 0xE1;  // x^8 + x^4 + x^3 + x + 1 = 0x1B, но с учетом сдвига
             }
         }
     }
@@ -123,21 +137,10 @@ static void gmul_block(const uint8_t *a, const uint8_t *b, uint8_t *result) {
     memcpy(result, z, 16);
 }
 
-static void ghash(const uint8_t *h, const uint8_t *aad, size_t aad_len,
+static void ghash(const uint8_t *h,
                   const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *tag) {
     uint8_t x[16] = {0};
     uint8_t block[16];
-    
-    for (size_t i = 0; i < aad_len; i += 16) {
-        size_t block_len = (i + 16 <= aad_len) ? 16 : aad_len - i;
-        memset(block, 0, 16);
-        memcpy(block, aad + i, block_len);
-        
-        for (int j = 0; j < 16; j++) {
-            x[j] ^= block[j];
-        }
-        gmul_block(x, h, x);
-    }
     
     for (size_t i = 0; i < ciphertext_len; i += 16) {
         size_t block_len = (i + 16 <= ciphertext_len) ? 16 : ciphertext_len - i;
@@ -150,12 +153,10 @@ static void ghash(const uint8_t *h, const uint8_t *aad, size_t aad_len,
         gmul_block(x, h, x);
     }
     
-    uint64_t aad_len_bits = ((uint64_t)aad_len) * 8;
     uint64_t ciphertext_len_bits = ((uint64_t)ciphertext_len) * 8;
     
     memset(block, 0, 16);
     for (int i = 0; i < 8; i++) {
-        block[7 - i] = (aad_len_bits >> (i * 8)) & 0xff;
         block[15 - i] = (ciphertext_len_bits >> (i * 8)) & 0xff;
     }
     
@@ -213,18 +214,16 @@ Status aes256_gcm(const uint8_t* plaintext, uint8_t* ciphertext,
         
         size_t block_len = (i + 16 <= plaintext_len) ? 16 : plaintext_len - i;
 
-#pragma omp simd
         for (size_t j = 0; j < block_len; j++) {
             ciphertext[i + j] = plaintext[i + j] ^ keystream[j];
         }
     }
     
-    ghash(h, nullptr, 0, ciphertext, plaintext_len, tag);
+    ghash(h, ciphertext, plaintext_len, tag);
     
     uint8_t e_j0[16];
     aes256_encrypt(j0, e_j0, key);
 
-#pragma omp simd
     for (int i = 0; i < 16; i++) {
         tag[i] ^= e_j0[i];
     }
