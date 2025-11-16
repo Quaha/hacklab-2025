@@ -7,15 +7,31 @@
 #include <random>
 
 #include "utils.hpp"
+#include "gen.hpp"
+
+#include <iostream>
 
 Status generate_bits(size_t n, uint32_t seed, uint32_t* result) {
 
+    const int N = static_cast<int>(n);
 
+#pragma omp parallel 
+    {
 
-    std::minstd_rand0 gen(seed);
+        int tid = omp_get_thread_num();
+        int num_of_threads = omp_get_num_threads();
 
-    for (int i = 0; i < n; ++i) {
-        result[i] = 0;
+        int BLOCK_SIZE = divup(n, num_of_threads);
+
+        int START = BLOCK_SIZE * tid;
+        int END = std::min(BLOCK_SIZE * (tid + 1), N);
+
+        Generator gen(seed, START);
+
+        for (int i = START; i < END; ++i) {
+            result[i] = gen();
+        }
     }
+
     return STATUS_OK;
 }

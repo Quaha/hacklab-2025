@@ -7,6 +7,7 @@
 #include <random>
 
 #include "utils.hpp"
+#include "gen.hpp"
 
 Status generate_exponential(size_t n, uint32_t seed, float lambda, float* result) {
 
@@ -23,9 +24,7 @@ Status generate_exponential(size_t n, uint32_t seed, float lambda, float* result
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        const uint32_t SEED = changeSeed(seed, tid);
-
-        std::minstd_rand0 gen(SEED);
+        Generator gen(seed, START);
 
         std::exponential_distribution<float> d{ lambda };
 

@@ -7,6 +7,7 @@
 #include <random>
 
 #include "utils.hpp"
+#include "gen.hpp"
 
 Status generate_bernoulli(size_t n, uint32_t seed, float probability, float* result) {
 
@@ -23,9 +24,7 @@ Status generate_bernoulli(size_t n, uint32_t seed, float probability, float* res
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        const uint32_t SEED = changeSeed(seed, tid);
-
-        std::minstd_rand0 gen(SEED);
+        Generator gen(seed, START);
         std::bernoulli_distribution d{ probability };
 
         for (int i = START; i < END; ++i) {

@@ -7,6 +7,7 @@
 #include <random>
 
 #include "utils.hpp"
+#include "gen.hpp"
 
 Status generate_uniform(size_t n, uint32_t seed, float min, float max, float* result) {
 
@@ -23,9 +24,7 @@ Status generate_uniform(size_t n, uint32_t seed, float min, float max, float* re
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        const uint32_t SEED = changeSeed(seed, tid);
-
-        std::minstd_rand0 gen(SEED);
+        Generator gen(seed, START);
          
         std::uniform_real_distribution<float> d{ min, max };
 
