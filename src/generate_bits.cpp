@@ -12,7 +12,7 @@ Status generate_bits(size_t n, uint32_t seed, uint32_t* result) {
     std::minstd_rand0 gen(seed);
 
     for (int i = 0; i < n; ++i) {
-        result[i] = gen();
+        result[i] = 0;
     }
     return STATUS_OK;
 }
