@@ -72,9 +72,12 @@ inline float uni_f_distab(Generator& gen, float a, float b) {
 }
 
 inline float exp_f_dist(Generator& gen, float lambda) {
-	return -std::log(1.0f - uni_f_dist01(gen)) / lambda;
+	return -std::logf(1.0f - uni_f_dist01(gen)) / lambda;
 }
 
 inline float bern_f_dist(Generator& gen, float p) {
-	return uni_f_dist01(gen) <= p;
+	if (uni_f_dist01(gen) <= p) {
+		return 1.0f;
+	}
+	return 0.0f;
 }
