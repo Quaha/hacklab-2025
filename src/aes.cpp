@@ -2,10 +2,13 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include <wmmintrin.h>
 
 #include "solution.hpp"
 
-static uint8_t gmul(uint8_t a, uint8_t b) {
+static uint8_t gmul[256][256];
+
+static uint8_t gmul_impl(uint8_t a, uint8_t b) {
     uint8_t p = 0;
     for (int i = 0; i < 8; i++) {
         if (b & 1) p ^= a;
@@ -17,14 +20,21 @@ static uint8_t gmul(uint8_t a, uint8_t b) {
     return p;
 }
 
+static void gmul_precomp() {
+#pragma omp parallel for
+    for (int i = 0; i < 256 * 256; i++) {
+        gmul[i / 256][i % 256] = gmul_impl(i / 256, i % 256);
+    }
+}
+
 static uint8_t gf_inv(uint8_t x) {
     if (x == 0) return 0;
     uint8_t y = x;
     for (int i = 0; i < 6; i++) {
-        y = gmul(y, y);
-        y = gmul(y, x);
+        y = gmul[y][y];
+        y = gmul[y][x];
     }
-    return gmul(y, y);
+    return gmul[y][y];
 }
 
 static uint8_t sbox_calc(uint8_t x) {
@@ -35,37 +45,9 @@ static uint8_t sbox_calc(uint8_t x) {
     return s ^ 0x63;
 }
 
-static void sub_bytes(uint8_t *s) {
-    for (int i = 0; i < 16; i++)
-        s[i] = sbox_calc(s[i]);
-}
-
-static void shift_rows(uint8_t *s) {
-    uint8_t t;
-    t = s[1]; s[1] = s[5]; s[5] = s[9]; s[9] = s[13]; s[13] = t;
-    t = s[2]; s[2] = s[10]; s[10] = t;
-    t = s[6]; s[6] = s[14]; s[14] = t;
-    t = s[15]; s[15] = s[11]; s[11] = s[7]; s[7] = s[3]; s[3] = t;
-}
-
-static void mix_columns(uint8_t *s) {
-    for (int i = 0; i < 4; i++) {
-        uint8_t *c = s + i * 4;
-        uint8_t a[4] = {c[0], c[1], c[2], c[3]};
-        c[0] = gmul(a[0], 2) ^ gmul(a[1], 3) ^ a[2] ^ a[3];
-        c[1] = a[0] ^ gmul(a[1], 2) ^ gmul(a[2], 3) ^ a[3];
-        c[2] = a[0] ^ a[1] ^ gmul(a[2], 2) ^ gmul(a[3], 3);
-        c[3] = gmul(a[0], 3) ^ a[1] ^ a[2] ^ gmul(a[3], 2);
-    }
-}
-
-static void add_round_key(uint8_t *s, const uint8_t *k) {
-    for (int i = 0; i < 16; i++) s[i] ^= k[i];
-}
-
 static uint8_t rcon(uint8_t i) {
     uint8_t c = 1;
-    while (i-- > 1) c = gmul(c, 2);
+    while (i-- > 1) c = gmul[c][2];
     return c;
 }
 
@@ -98,25 +80,18 @@ static void key_expansion(const uint8_t *key, uint8_t *w) {
 }
 
 void aes256_encrypt(const uint8_t *in, uint8_t *out, const uint8_t *key) {
-    uint8_t state[16], w[240];
-    
-    memcpy(state, in, 16);
+    uint8_t w[240];
     key_expansion(key, w);
-    
-    add_round_key(state, w);
+
+    __m128i state = _mm_loadu_si128((const __m128i*)in);
+    state = _mm_xor_si128(state, *((const __m128i*)w));
     
     for (int round = 1; round < 14; round++) {
-        sub_bytes(state);
-        shift_rows(state);
-        mix_columns(state);
-        add_round_key(state, w + round * 16);
+        state = _mm_aesenc_si128(state, *((const __m128i*)(w + round * 16)));
     }
-    
-    sub_bytes(state);
-    shift_rows(state);
-    add_round_key(state, w + 14 * 16);
-    
-    memcpy(out, state, 16);
+
+    state = _mm_aesenclast_si128(state, *((const __m128i*)(w + 14 * 16)));
+    _mm_storeu_si128((__m128i*)out, state);
 }
 
 static void gmul_block(const uint8_t *a, const uint8_t *b, uint8_t *result) {
@@ -216,6 +191,8 @@ Status aes256_gcm(const uint8_t* plaintext, uint8_t* ciphertext,
         return STATUS_ERROR;
     }
     
+    gmul_precomp();
+
     uint8_t h[16] = {0};
     uint8_t zero_block[16] = {0};
     aes256_encrypt(zero_block, h, key);
