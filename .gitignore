@@ -1,0 +1,5 @@
+.vscode/
+app
+
+**/*.o
+hackathon_internals\correctness_tests.o

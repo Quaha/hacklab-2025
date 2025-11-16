@@ -9,7 +9,7 @@ static uint8_t gmul(uint8_t a, uint8_t b) {
     uint8_t p = 0;
     for (int i = 0; i < 8; i++) {
         if (b & 1) p ^= a;
-        uint8_t hi = a & 0x80;
+        uint8_t hi = a & 0x80; // high bit
         a <<= 1;
         if (hi) a ^= 0x1b;
         b >>= 1;
@@ -192,13 +192,13 @@ static void ghash(const uint8_t *h, const uint8_t *aad, size_t aad_len,
     memcpy(tag, x, 16);
 }
 
-static void inc32(uint8_t *counter) {
+static void add32(uint8_t *counter, uint32_t delta) {
     uint32_t val = ((uint32_t)counter[12] << 24) |
                    ((uint32_t)counter[13] << 16) |
                    ((uint32_t)counter[14] << 8) |
                    ((uint32_t)counter[15]);
     
-    val++;
+    val += delta;
     
     counter[12] = (val >> 24) & 0xff;
     counter[13] = (val >> 16) & 0xff;
@@ -221,26 +221,22 @@ Status aes256_gcm(const uint8_t* plaintext, uint8_t* ciphertext,
     aes256_encrypt(zero_block, h, key);
     
     uint8_t j0[16];
-    if (12 == 12) {
-        memset(j0, 0, 16);
-        memcpy(j0, iv, 12);
-        j0[15] = 0x01;
-    } else {
-        memset(j0, 0, 16);
-        memcpy(j0, iv, 12);
-        j0[15] = 0x01;
-    }
+    memset(j0, 0, 16);
+    memcpy(j0, iv, 12);
+    j0[15] = 0x01;
     
-    uint8_t counter[16];
-    memcpy(counter, j0, 16);
-    inc32(counter);
-    
+#pragma omp parallel for
     for (size_t i = 0; i < plaintext_len; i += 16) {
+        uint8_t counter2[16];
+        memcpy(counter2, j0, 16);
+        add32(counter2, 1 + (i >> 4));
+
         uint8_t keystream[16];
-        aes256_encrypt(counter, keystream, key);
-        inc32(counter);
+        aes256_encrypt(counter2, keystream, key);
         
         size_t block_len = (i + 16 <= plaintext_len) ? 16 : plaintext_len - i;
+
+#pragma omp simd
         for (size_t j = 0; j < block_len; j++) {
             ciphertext[i + j] = plaintext[i + j] ^ keystream[j];
         }
@@ -250,7 +246,8 @@ Status aes256_gcm(const uint8_t* plaintext, uint8_t* ciphertext,
     
     uint8_t e_j0[16];
     aes256_encrypt(j0, e_j0, key);
-    
+
+#pragma omp simd
     for (int i = 0; i < 16; i++) {
         tag[i] ^= e_j0[i];
     }
