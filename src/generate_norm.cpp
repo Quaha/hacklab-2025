@@ -9,11 +9,30 @@
 #include "utils.hpp"
 
 Status generate_norm(size_t n, uint32_t seed, float mean, float stddev, float* result) {
-    std::minstd_rand0 gen(seed);
-    std::normal_distribution<float> d{ mean, stddev };
 
-    for (int i = 0; i < n; ++i) {
-        result[i] = d(gen);
+
+    const int N = static_cast<int>(n);
+
+#pragma omp parallel 
+    {
+
+        int tid = omp_get_thread_num();
+        int num_of_threads = omp_get_num_threads();
+
+        int BLOCK_SIZE = divup(n, num_of_threads);
+
+        int START = BLOCK_SIZE * tid;
+        int END = std::min(BLOCK_SIZE * (tid + 1), N);
+
+        const uint32_t SEED = changeSeed(seed, tid);
+
+        std::minstd_rand0 gen(SEED);
+
+        std::normal_distribution<float> d{ mean, stddev };
+
+        for (int i = START; i < END; ++i) {
+            result[i] = d(gen);
+        }
     }
 
     return STATUS_OK;

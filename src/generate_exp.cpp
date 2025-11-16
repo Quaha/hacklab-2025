@@ -10,12 +10,30 @@
 
 Status generate_exponential(size_t n, uint32_t seed, float lambda, float* result) {
 
-    std::minstd_rand0 gen(seed);
-    std::exponential_distribution<float> d{ lambda };
+    const int N = static_cast<int>(n);
 
-    for (int i = 0; i < n; ++i) {
-        result[i] = d(gen);
+#pragma omp parallel 
+    {
+
+        int tid = omp_get_thread_num();
+        int num_of_threads = omp_get_num_threads();
+
+        int BLOCK_SIZE = divup(n, num_of_threads);
+
+        int START = BLOCK_SIZE * tid;
+        int END = std::min(BLOCK_SIZE * (tid + 1), N);
+
+        const uint32_t SEED = changeSeed(seed, tid);
+
+        std::minstd_rand0 gen(SEED);
+
+        std::exponential_distribution<float> d{ lambda };
+
+        for (int i = START; i < END; ++i) {
+            result[i] = d(gen);
+        }
     }
+ 
 
     return STATUS_OK;
 }
