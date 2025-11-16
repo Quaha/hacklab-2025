@@ -24,11 +24,12 @@ Status generate_bernoulli(size_t n, uint32_t seed, float probability, float* res
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        Generator gen(seed, START);
-        std::bernoulli_distribution d{ probability };
+        uint64_t b = (seed * fastPow(a, START + 1)) % mod;
 
         for (int i = START; i < END; ++i) {
-            result[i] = bern_f_dist(gen, probability);
+            result[i] = fbern_f_dist(b, probability);
+            b *= a;
+            b %= mod;
         }
     }
 

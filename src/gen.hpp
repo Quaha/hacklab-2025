@@ -32,7 +32,7 @@ struct Generator {
 	void move(int shift);
 };
 
-#define VGENSZ 64
+#define VGENSZ 128
 
 struct VGenerator {
 
@@ -77,6 +77,25 @@ inline float exp_f_dist(Generator& gen, float lambda) {
 
 inline float bern_f_dist(Generator& gen, float p) {
 	if (uni_f_dist01(gen) <= p) {
+		return 1.0f;
+	}
+	return 0.0f;
+}
+
+inline float funi_f_dist01(float value) {
+	return (value - Generator::fmin()) / Generator::flen();
+}
+
+inline float funi_f_distab(float value, float a, float b) {
+	return a + (b - a) * funi_f_dist01(value);
+}
+
+inline float fexp_f_dist(float value, float lambda) {
+	return -std::log(1.0f - funi_f_dist01(value)) / lambda;
+}
+
+inline float fbern_f_dist(float value, float p) {
+	if (funi_f_dist01(value) <= p) {
 		return 1.0f;
 	}
 	return 0.0f;

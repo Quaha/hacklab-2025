@@ -24,10 +24,12 @@ Status generate_uniform(size_t n, uint32_t seed, float min, float max, float* re
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        Generator gen(seed, START);
+        uint64_t b = (seed * fastPow(a, START + 1)) % mod;
 
         for (int i = START; i < END; ++i) {
-            result[i] = uni_f_distab(gen, min, max);
+            result[i] = funi_f_distab(b, min, max);
+            b *= a;
+            b %= mod;
         }
     }
 

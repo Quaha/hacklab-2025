@@ -24,10 +24,12 @@ Status generate_exponential(size_t n, uint32_t seed, float lambda, float* result
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        Generator gen(seed, START);
+        uint64_t b = (seed * fastPow(a, START + 1)) % mod;
 
         for (int i = START; i < END; ++i) {
-            result[i] = exp_f_dist(gen, lambda);
+            result[i] = fexp_f_dist(b, lambda);
+            b *= a;
+            b %= mod;
         }
     }
  

@@ -26,24 +26,14 @@ Status generate_bits(size_t n, uint32_t seed, uint32_t* result) {
         int START = BLOCK_SIZE * tid;
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
 
-        VGenerator gen(seed, START);
-        Generator sgen(seed, START);
+        uint64_t b = (seed * fastPow(a, START + 1)) % mod;
 
-        int i = START;
-        for (; i + VGENSZ <= END; i += VGENSZ) {
-            //for (int j = 0; j < VGENSZ; j++) {
-            //    if (i != START) continue;
-            //    std::cout << sgen() << " ";
-            //}
-            gen.copy(VGENSZ, i, result);
-            //for (int j = 0; j < VGENSZ; j++) {
-            //    if (i != START) continue;
-            //    std::cout << gen.state[j] << " ";
-            //}
-            //std::cout << "\n";
-            gen.change();
+        for (int i = START; i < END; ++i) {
+            result[i] = (uint32_t)b;
+            //std::cout << b << "\n";
+            b *= a;
+            b %= mod;
         }
-        gen.copy(END - i, i, result);
     }
 
     return STATUS_OK;

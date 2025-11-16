@@ -27,13 +27,23 @@ const int N = static_cast<int>(n);
         int END = std::min(BLOCK_SIZE * (tid + 1), N);
         Generator gen(seed, START);
 
+        uint64_t b = (seed * fastPow(a, START + 1)) % mod;
+
         for (int i = START; i < END; i += 2) {
-            float x = uni_f_distab(gen, -1.0f, 1.0f);
-            float y = uni_f_distab(gen, -1.0f, 1.0f);
+            float x = funi_f_distab(b, -1.0f, 1.0f);
+            b *= a;
+            b %= mod;
+            float y = funi_f_distab(b, -1.0f, 1.0f);
+            b *= a;
+            b %= mod;
             float s = x * x + y * y;
             while (s == 0.0f || s > 1.0f) {
-                x = uni_f_distab(gen, -1.0f, 1.0f);
-                y = uni_f_distab(gen, -1.0f, 1.0f);
+                x = funi_f_distab(b, -1.0f, 1.0f);
+                b *= a;
+                b %= mod;
+                y = funi_f_distab(b, -1.0f, 1.0f);
+                b *= a;
+                b %= mod;
                 s = x * x + y * y;
             }
             float z = sqrt(-2.0f * log(s) / s);
